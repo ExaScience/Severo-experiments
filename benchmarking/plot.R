@@ -107,15 +107,28 @@ X <- read.csv("comparison_metrics.csv") %>%
     ) %>% tidyr::drop_na(implementation, dataset)
 
 Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(ari=median(ari), jaccard=median(jaccard), peakmem=median(peakmem)) %>% dplyr::ungroup()
-p <- ggplot(Y, aes(x=dataset, y=peakmem, group=implementation, fill=implementation)) +
+
+g <- guides(fill = guide_legend(override.aes = list(color = cols,
+                                                    shape = c(16, 16, 16),
+                                                    size = c(1, 1, 1),
+                                                    alpha = c(1, 1, 1)),))
+
+p <- ggplot(Y, aes(x=dataset, y=peakmem, group=implementation, fill=implementation, color=implementation)) +
     geom_col(position="dodge") +
     scale_color_manual(values=cols) +
-    ylab("Peak memory (GB)") + xlab(NULL)
-p <- ggplot(Y, aes(x=size, y=peakmem, group=implementation, color=implementation)) +
+	geom_hline(aes(yintercept=256), color="red") + annotate("text", x="PBMC (3k)", y=256, label="maximum system memory", color="red", vjust=-1) +
+    ylab("Peak memory (GB)") + xlab(NULL)# + g
+q <- ggplot(Y, aes(x=size, y=peakmem, group=implementation, fill=implementation, color=implementation)) +
     geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     geom_point() +
+	geom_hline(aes(yintercept=256), color="red") + annotate("text", x=100000, y=256, label="maximum system memory", color="red", vjust=-1) +
     scale_color_manual(values=cols) +
-    ylab("Peak memory (GB)") + xlab("Number of cells")
+    ylab("Peak memory (GB)") + xlab("Number of cells")# + g
+ggsave(file="memory_usage_bars.pdf", plot=p, width=20, height=15)
+ggsave(file="memory_usage_scaling.pdf", plot=q, width=20, height=15)
+
+comb <- (p | q) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A') & theme(legend.position = 'bottom')
+ggsave(file="memory_usage_comb.pdf", plot=comb, width=20, height=15)
 
 Z <- Y %>% dplyr::filter(implementation != "seurat") %>% dplyr::mutate(implementation = factor(implementation, levels=c("scanpy", "severo")))
 p1 <- ggplot(Z, aes(x=dataset, y=jaccard, group=implementation, fill=implementation)) +
