@@ -5,11 +5,29 @@ using DataFrames
 const steps_jl = ["filter_counts", "normalize_cells", "find_variable_features", "scale_features", "embedding", "shared_nearest_neighbours", "cluster", "umap", "find_all_markers"]
 const steps_R = ["CreateSeuratObject", "NormalizeData", "FindVariableFeatures", "ScaleData", "RunPCA", "FindNeighbors", "FindClusters", "RunUMAP", "FindAllMarkers"]
 
-function read_time(ds)
-    k = read(ds, "t/keys")
-    v = read(ds, "t/vals")
+function read_dict(ds)
+    k = read(ds, "keys")
+    v = read(ds, "vals")
     replace!(k, "normalize"=>"normalize_cells")
     Dict(zip(k,v))
+end
+
+function read_time(ds, steps)
+    if haskey(ds, "t")
+        d = read_dict(ds["t"])
+        [get(d, k, missing) for k in steps]
+    else
+        [missing for k in steps]
+    end
+end
+
+function read_mem(ds, steps)
+    if haskey(ds, "mem")
+        d = read_dict(ds["mem"])
+        [get(d, k, missing) for k in steps]
+    else
+        [missing for k in steps]
+    end
 end
 
 function find_cellcount(f)
@@ -22,7 +40,8 @@ function find_cellcount(f)
     error("cell count not found")
 end
 
-df = DataFrame()
+df = DataFrame(dataset=String[], it=Int64[], size=Int64[], implementation=String[],
+     step=String[], time=Union{Missing, Float64}[], mem=Union{Missing, Float64}[], clusters=Int64[])
 for fname in filter(endswith(".h5"), readdir())
     try
         name, _ = splitext(fname)
@@ -42,9 +61,9 @@ for fname in filter(endswith(".h5"), readdir())
                 if haskey(io, prefix)
                     ds = io[prefix]
                     lbls = read(ds, "lbls")
-                    t = read_time(ds)
-                    vals = [get(t, k, missing) for k in steps]
-                    append!(df, DataFrame(dataset=name, it=it, size=size, implementation=prefix, step=steps_R, time=vals, clusters=length(unique(lbls))))
+                    time = read_time(ds, steps)
+                    mem = read_mem(ds, steps)
+                    append!(df, DataFrame(dataset=name, it=it, size=size, implementation=prefix, step=steps_R, time=time, mem=mem, clusters=length(unique(lbls))))
                 end
             end
             df
