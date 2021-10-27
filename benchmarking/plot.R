@@ -133,11 +133,12 @@ ggsave(file="memory_usage_comb.pdf", plot=comb, width=20, height=15)
 Z <- Y %>% dplyr::filter(implementation != "seurat") %>% dplyr::mutate(implementation = factor(implementation, levels=c("scanpy", "severo")))
 p1 <- ggplot(Z, aes(x=dataset, y=jaccard, group=implementation, fill=implementation)) +
         geom_col(position="dodge") +
-        ylab("Jaccard index") + xlab(NULL)
+        ylab("Jaccard index") + xlab(NULL) +
+	   	ggtitle("highly-variables genes")
 
 p2 <- ggplot(Z, aes(x=dataset, y=ari, group=implementation, fill=implementation)) +
         geom_col(position="dodge") +
-        ylab("Adjusted rand index") + xlab(NULL)
-combined <- p1 + p2 & theme(legend.position = "bottom")
-p <- combined + plot_layout(guides = "collect")
+        ylab("Adjusted rand index") + xlab(NULL) +
+	   	ggtitle("clustering")
+p <- (p1 + p2) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A') & theme(legend.position = "bottom")
 ggsave(file="comparison_metrics.pdf", plot=p, width=20, height=15)
