@@ -67,7 +67,7 @@ p <- ggplot(X) +
 ggsave(file="comparison_umap.pdf", plot=p, width=20, height=15)
 
 X <- read.csv("comparison.csv", stringsAsFactors=T)
-X <- X %>% dplyr::filter(dataset %in% c("1M_gz", "210129_raw_BALPBMC.h5ad", "3k", "l5_all", "pbmc_68k")) %>%
+X <- X %>% dplyr::filter(dataset %in% c("1M_gz", "210129_raw_BALPBMC", "3k", "l5_all", "pbmc_68k")) %>%
     dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl"), labels=c("seurat", "scanpy", "severo")),
                 step = factor(step,
                             levels=c("CreateSeuratObject", "FindVariableFeatures", "NormalizeData", "ScaleData", "RunPCA", "FindNeighbors", "FindClusters", "RunUMAP", "FindAllMarkers"),
