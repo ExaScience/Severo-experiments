@@ -98,6 +98,8 @@ p <- ggplot(X, aes(x=implementation, y=time, fill=step)) +
 
 ggsave(file="comparison_datasets.pdf", plot=p, width=20, height=15)
 
+Z <- X %>% dplyr::group_by(dataset, implementation) %>% dplyr::mutate(incrmem = mem - dplyr::lag(mem, order_by=step)) %>% dplyr::ungroup()
+
 X <- read.csv("comparison_metrics.csv") %>%
     dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl"), labels=c("seurat", "scanpy", "severo")),
         dataset = factor(dataset,
