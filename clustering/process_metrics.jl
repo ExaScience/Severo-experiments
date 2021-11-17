@@ -18,8 +18,8 @@ h5open("results.h5", "cw") do io
                 push!(df, (
                     dataset=dataset, size=size, implementation=implementation,
                     dims=attrs[:dims], k=attrs[:k], resolution=attrs[:resolution], tables=attrs[:tables],
-                    time=attrs[:time], purity=attrs[:purity], clusters=attrs[:clusters],
-                    ari=attrs[:randindex][1], ri=attrs[:randindex][2]
+                    time=attrs[:time], purity=attrs[:purity], classpurity=attrs[:classpurity],
+                    clusters=attrs[:clusters], ari=attrs[:randindex][1], ri=attrs[:randindex][2]
                 ))
             end
         end

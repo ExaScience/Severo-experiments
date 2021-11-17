@@ -61,9 +61,11 @@ end
 function read_labels(fname::AbstractString)
     h5open(fname, "r") do io
         df = read_dataframe(io["obs"])
-        df[:,:subclass_id]
+        df[:,:class_id], df[:,:subclass_id]
     end
 end
+
+estimate_mapping(from, to) = map(I->I[2], argmax(counts(from, to), dims=2))
 
 function parse_arguments()
     s = ArgParseSettings()
@@ -91,7 +93,7 @@ function parse_arguments()
         "--backend"
             arg_type = String
             default = "severo"
-            range_tester = in(["severo", "scanpy", "seurat"])
+            range_tester = in(["severo", "scanpy", "seurat", "severo32"])
         "datasets"
             help = "datasets to process"
             required = true
@@ -108,7 +110,7 @@ for fname in args["datasets"]
     name, _ = splitext(basename(fname))
 
     X = read_h5ad(fname)
-    lbls_true = read_labels(fname)
+    class_true, lbls_true = read_labels(fname)
 
     backend = args["backend"]
     for (dims, k, resolution, ntables) in named_product(dims=args["dims"], k=args["k"], resolution=args["resolution"], ntables=args["ntables"])
@@ -152,8 +154,11 @@ for fname in args["datasets"]
                 ri = randindex(lbls_true, lbls)
                 write_attribute(ds, "randindex", collect(ri))
 
-                p = purity(lbls_true, lbls)
+                p = purity(lbls, lbls_true)
                 write_attribute(ds, "purity", p)
+
+                p = purity(lbls, class_true)
+                write_attribute(ds, "classpurity", p)
 
                 clusters = length(unique(read(ds)))
                 write_attribute(ds, "clusters", clusters)

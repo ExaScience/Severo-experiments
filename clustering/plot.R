@@ -18,7 +18,7 @@ palette <- c("red4", "darkslategray3", "dodgerblue1", "darkcyan",
 cols <- c("seurat"="#F8766D", "scanpy"="#00BA38", "severo"="#619CFF")
 
 X <- read.csv("comparison.csv", stringsAsFactors=T)
-X <- X %>% tidyr::pivot_longer(c(ari, purity, ri), names_to="score", values_to="value")
+X <- X %>% tidyr::pivot_longer(c(ari, purity, ri, classpurity, clusters), names_to="score", values_to="value")
 
 Z <- X %>% dplyr::group_by(dataset, implementation, score) %>% dplyr::summarize(value=max(value)) %>% dplyr::ungroup()
 
