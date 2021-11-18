@@ -89,9 +89,13 @@ function shared_nearest_neighbours(X::PyObject, k=20; dims=1:50, ntables::Int=50
     X
 end
 
-function cluster(X::PyObject; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true)
+function cluster(X::PyObject; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true, seed=nothing)
     @assert algorithm == :louvain
-    sc.tl.louvain(X, resolution=resolution)
+    if seed !== nothing
+        sc.tl.louvain(X, resolution=resolution, random_state=seed)
+    else
+        sc.tl.louvain(X, resolution=resolution)
+    end
     X.obs.louvain.astype("int")
 end
 

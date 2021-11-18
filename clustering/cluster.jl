@@ -10,7 +10,7 @@ include("scanpy.jl")
 include("named_product.jl")
 using .NamedProduct
 
-function pipeline(X; resolution=0.5, k=20, ntables=50, dims=50)
+function pipeline(X; resolution=0.5, k=20, ntables=50, dims=50, seed=nothing)
     X = filter_counts(X, min_cells=3, min_features=200)
     hvf = find_variable_features(X, 2000, method=:vst)
 
@@ -90,6 +90,10 @@ function parse_arguments()
             arg_type = Float64
             default = [0.5]
             nargs = '+'
+        "--seed"
+            arg_type = Union{Int, Nothing}
+            default = [nothing]
+            nargs = +
         "--backend"
             arg_type = String
             default = "severo"
@@ -113,8 +117,8 @@ for fname in args["datasets"]
     class_true, lbls_true = read_labels(fname)
 
     backend = args["backend"]
-    for (dims, k, resolution, ntables) in named_product(dims=args["dims"], k=args["k"], resolution=args["resolution"], ntables=args["ntables"])
-        println("$(dims) $(k) $(ntables) $(resolution)")
+    for (dims, k, resolution, ntables, seed) in named_product(dims=args["dims"], k=args["k"], resolution=args["resolution"], ntables=args["ntables"], seed=args["seed"])
+        println("$(dims) $(k) $(ntables) $(resolution) $(seed)")
 
         Y = if backend == "seurat"
             matrix_to_R(X)
@@ -128,7 +132,7 @@ for fname in args["datasets"]
             ntables = dims * 2
         end
 
-        lbls, time, stats = @timed pipeline(Y, resolution=resolution, k=k, ntables=ntables, dims=dims)
+        lbls, time, stats = @timed pipeline(Y, resolution=resolution, k=k, ntables=ntables, dims=dims, seed=seed)
         lbls = convert(Vector{Int}, lbls)
 
         h5open(args["output"], "cw") do io
@@ -138,7 +142,12 @@ for fname in args["datasets"]
                 create_group(io, "$backend/$name")
             end
 
-            dsname = "$(dims)_$(k)_$(ntables)_$(resolution)"
+            dsname = if seed == nothing
+                "$(dims)_$(k)_$(ntables)_$(resolution)"
+            else
+                "$(dims)_$(k)_$(ntables)_$(resolution)_$(seed)"
+            end
+
             if !haskey(g, dsname)
                 write(g, dsname, lbls)
                 ds = g[dsname]
@@ -147,6 +156,9 @@ for fname in args["datasets"]
                 write_attribute(ds, "resolution", resolution)
                 write_attribute(ds, "k", k)
                 write_attribute(ds, "tables", ntables)
+                if seed !== nothing
+                    write_attribute(ds, "seed", seed)
+                end
 
                 write_attribute(ds, "time", time)
                 write_attribute(ds, "stats", collect(stats))

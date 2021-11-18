@@ -75,12 +75,17 @@ function shared_nearest_neighbours(data::RObject, k=20; dims=1:50, ntables=50)
     R"Seurat::FindNeighbors(object=$data, k.param=$k, dims=$dims, n.trees=$ntables)"
 end
 
-function cluster(data::RObject; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true)
+function cluster(data::RObject; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true, seed=nothing)
     #data = Seurat.FindClusters(object=data, resolution=resolution, var"n.start"=nrandomstarts,
     #    var"n.iter"=niterations, verbose=verbose, var"group.singletons"=group_singletons)
     #Seurat.Idents(object=data)
-    data = R"Seurat::FindClusters(object=$data, resolution=$resolution, n.start=$nrandomstarts,
-        n.iter=$niterations, verbose=$verbose, group.singletons=$group_singletons)"
+    if seed !== nothing
+        data = R"Seurat::FindClusters(object=$data, resolution=$resolution, n.start=$nrandomstarts,
+            n.iter=$niterations, verbose=$verbose, group.singletons=$group_singletons, random.seed=$seed)"
+    else
+        data = R"Seurat::FindClusters(object=$data, resolution=$resolution, n.start=$nrandomstarts,
+            n.iter=$niterations, verbose=$verbose, group.singletons=$group_singletons)"
+    end
     R"Seurat::Idents(object=$data)"
 end
 
