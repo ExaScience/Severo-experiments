@@ -18,8 +18,8 @@ function pipeline(X; resolution=0.5, k=20, ntables=50, dims=50, seed=nothing)
 
     S = scale_features(Y, scale_max=10, features=hvf)
     em = embedding(S, dims, method=:pca, algorithm=:tssvd)
-    snn = shared_nearest_neighbours(em, k, dims=1:dims, ntables=ntables)
-    lbls = cluster(snn, resolution=resolution)
+    snn = shared_nearest_neighbours(em, k, dims=1:dims, ntables=ntables, seed=seed)
+    lbls = cluster(snn, resolution=resolution, seed=seed)
     lbls
 end
 

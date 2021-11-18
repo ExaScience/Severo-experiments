@@ -70,7 +70,7 @@ function embedding(data::RObject, ncomponents::Int64=50; method=:pca, kw...)
     R"Seurat::RunPCA(object=$data, npcs=$ncomponents)"
 end
 
-function shared_nearest_neighbours(data::RObject, k=20; dims=1:50, ntables=50)
+function shared_nearest_neighbours(data::RObject, k=20; dims=1:50, ntables=50, seed=nothing)
     #Seurat.FindNeighbors(object=data, var"k.param"=k, dims=dims, var"n.trees"=ntables)
     R"Seurat::FindNeighbors(object=$data, k.param=$k, dims=$dims, n.trees=$ntables)"
 end

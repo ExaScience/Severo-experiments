@@ -84,8 +84,12 @@ function embedding(X::PyObject, ncomponents::Int64=50; method=:pca, kw...)
     X
 end
 
-function shared_nearest_neighbours(X::PyObject, k=20; dims=1:50, ntables::Int=50)
-    sc.pp.neighbors(X, n_neighbors=k, n_pcs=maximum(dims))
+function shared_nearest_neighbours(X::PyObject, k=20; dims=1:50, ntables::Int=50, seed=nothing)
+    if seed !== nothing
+      sc.pp.neighbors(X, n_neighbors=k, n_pcs=maximum(dims), random_state=seed)
+    else
+      sc.pp.neighbors(X, n_neighbors=k, n_pcs=maximum(dims))
+    end
     X
 end
 
