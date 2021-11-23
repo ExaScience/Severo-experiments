@@ -22,8 +22,12 @@ X <- X %>% tidyr::pivot_longer(c(ari, purity, ri, classpurity, clusters), names_
 
 Z <- X %>% dplyr::group_by(dataset, implementation, score) %>% dplyr::summarize(value=max(value)) %>% dplyr::ungroup()
 
-p <- ggplot(X, aes(x=resolution, y=value, color=implementation)) +
-     geom_point() +
+Y <- X %>% dplyr::group_by(dataset, implementation, resolution, dims, k, tables, score) %>% dplyr::summarize(mu=mean(value), sd=sd(value), n=length(value)) %>% dplyr::ungroup()
+Y <- Y %>% dplyr::filter(score == "ari")
+Y %>% dplyr::group_by(dataset, implementation, score) %>% dplyr::summarize(sd=mean(sd, na.rm=T))
+
+p <- ggplot(Y, aes(x=resolution, y=mu, color=implementation)) +
+     geom_pointrange(aes(ymin=mu-sd, ymax=mu+sd), position=position_dodge(width=0.1)) +
 #    scale_fill_manual(values=cols) +
     facet_grid(score~dataset, scales="free_y") + ylab("Score") + xlab(NULL) + theme(panel.background=element_rect("#F8f8f8"))
 
