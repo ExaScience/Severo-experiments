@@ -18,17 +18,49 @@ palette <- c("red4", "darkslategray3", "dodgerblue1", "darkcyan",
 cols <- c("seurat"="#F8766D", "scanpy"="#00BA38", "severo"="#619CFF")
 
 X <- read.csv("comparison.csv", stringsAsFactors=T)
-X <- X %>% tidyr::pivot_longer(c(ari, purity, ri, classpurity, clusters), names_to="score", values_to="value")
+X <- X %>% tidyr::pivot_longer(c(ari, purity, ri, classpurity, clusters, time, avgsilh), names_to="score", values_to="value") %>%
+	dplyr::group_by(dataset, implementation, resolution, dims, k, tables, score) %>%
+	dplyr::summarize(med=median(value), mu=mean(value), sd=sd(value), ymin=min(value), ymax=max(value), n=length(value)) %>%
+	dplyr::ungroup()
 
-Z <- X %>% dplyr::group_by(dataset, implementation, score) %>% dplyr::summarize(value=max(value)) %>% dplyr::ungroup()
+Z <- X %>% tidyr::pivot_wider(names_from=score, values_from=c(med, mu, sd, ymin, ymax, n)) %>%
+	dplyr::group_by(dataset, implementation) %>% dplyr::top_n(n=1, wt=med_ari) %>% dplyr::ungroup() %>%
+   	tidyr::pivot_longer(contains("_"), names_pattern="(.*)_(.*)", names_to=c(".value", "score"))
 
-Y <- X %>% dplyr::group_by(dataset, implementation, resolution, dims, k, tables, score) %>% dplyr::summarize(mu=mean(value), sd=sd(value), n=length(value)) %>% dplyr::ungroup()
-Y <- Y %>% dplyr::filter(score == "ari")
-Y %>% dplyr::group_by(dataset, implementation, score) %>% dplyr::summarize(sd=mean(sd, na.rm=T))
+Y <- X %>% tidyr::pivot_wider(names_from=score, values_from=c(med, mu, sd, ymin, ymax, n)) %>%
+	dplyr::group_by(dataset, implementation) %>% dplyr::top_n(n=1, wt=med_avgsilh) %>% dplyr::ungroup() %>%
+   	tidyr::pivot_longer(contains("_"), names_pattern="(.*)_(.*)", names_to=c(".value", "score"))
 
-p <- ggplot(Y, aes(x=resolution, y=mu, color=implementation)) +
-     geom_pointrange(aes(ymin=mu-sd, ymax=mu+sd), position=position_dodge(width=0.1)) +
+p <- ggplot(Z, aes(x=dataset, fill=implementation, group=implementation, y=med)) +
+   	geom_bar(stat="identity", position="dodge") +
+	geom_errorbar(aes(ymin=mu-sd, ymax=mu+sd), width=.2, position=position_dodge(.9)) +
+	facet_wrap(~score, scales="free_y")
+
+ggsave(file="comparison_optimal.pdf", plot=p, width=20, height=20)
+
+X %>% dplyr::group_by(dataset, implementation, score) %>% dplyr::summarize(sd=mean(sd, na.rm=T))
+
+p <- ggplot(X %>% dplyr::filter(dataset == "Human_M1_10xV3-D2", score == "ari"), aes(x=factor(resolution), y=mu, color=implementation)) +
+     geom_boxplot(aes(middle=med, lower=mu-sd, upper=mu+sd, ymin=ymin, ymax=ymax), stat="identity") +
 #    scale_fill_manual(values=cols) +
-    facet_grid(score~dataset, scales="free_y") + ylab("Score") + xlab(NULL) + theme(panel.background=element_rect("#F8f8f8"))
+    facet_grid(dims~k, labeller = label_both) + ylab("ARI") + xlab("resolution") + theme(panel.background=element_rect("#F8f8f8"))
 
-ggsave(file="comparison_clusters.pdf", plot=p, width=20, height=15)
+ggsave(file="comparison_clusters.pdf", plot=p, width=20, height=20)
+
+ggplot(X %>% dplyr::filter(dataset == "Human_M1_10xV3-D1", score == "avgsilh" | score == "ari"), aes(x=resolution, y=med, color=implementation)) +
+	geom_pointrange(aes(ymin=mu-sd, ymax=mu+sd)) +
+   	facet_grid(dims~score,labeller = label_both) +
+   	ylab("avg silhouette width")
+
+res <- h5read("umap.h5", "Human_M1_10xV3-D1/10")
+lbls_true <- h5read("umap.h5", "Human_M1_10xV3-D1/lbls")
+lbls_R <- h5read("results.h5", "seurat/Human_M1_10xV3-D1/10_20_20_0.1/lbls")
+lbls_py <- h5read("results.h5", "scanpy/Human_M1_10xV3-D1/10_20_20_0.1/lbls")
+lbls_jl <- h5read("results.h5", "severo/Human_M1_10xV3-D1/10_20_20_0.1/lbls")
+Q <- data.frame(x=res[,1], y=res[,2], lbls_R=factor(lbls_R), lbls_true=factor(lbls_true), lbls_py=factor(lbls_py), lbls_jl=factor(lbls_jl))
+wrap_plots(
+	ggplot(Q, aes(x=x, y=y)) + geom_point(aes(color=lbls_R)),
+	ggplot(Q, aes(x=x, y=y)) + geom_point(aes(color=lbls_true)),
+	ggplot(Q, aes(x=x, y=y)) + geom_point(aes(color=lbls_py)),
+	ggplot(Q, aes(x=x, y=y)) + geom_point(aes(color=lbls_jl)))
+
