@@ -14,10 +14,11 @@ function pipeline(X; resolution=0.5, k=20, ntables=50, dims=50, seed=nothing)
     X = filter_counts(X, min_cells=3, min_features=200)
     hvf = find_variable_features(X, 2000, method=:vst)
 
-    Y = normalize_cells(X, scale_factor=1e4, method=:lognormalize)
+    Y = normalize_cells(X, scale_factor=1e4, method=:lognormalize)#, dtype=Float32)
 
     S = scale_features(Y, scale_max=10, features=hvf)
     em = embedding(S, dims, method=:pca, algorithm=:tssvd)
+    #@assert eltype(em.coordinates) == Float32
     snn = shared_nearest_neighbours(em, k, dims=1:dims, ntables=ntables, seed=seed)
     lbls = cluster(snn, resolution=resolution, seed=seed)
     lbls
@@ -91,9 +92,9 @@ function parse_arguments()
             default = [0.5]
             nargs = '+'
         "--seed"
-            arg_type = Union{Int, Nothing}
-            default = [nothing]
-            nargs = +
+            arg_type = Int
+            default = [0]
+            nargs = '+'
         "--backend"
             arg_type = String
             default = "severo"
@@ -106,6 +107,11 @@ function parse_arguments()
     end
 
     return parse_args(s)
+end
+
+function as_factors(lbls)
+    z = Dict(reverse.(enumerate(unique(lbls))))
+    getindex.([z], lbls)
 end
 
 args = parse_arguments()
@@ -149,8 +155,8 @@ for fname in args["datasets"]
             end
 
             if !haskey(g, dsname)
-                write(g, dsname, lbls)
-                ds = g[dsname]
+                ds = create_group(g, dsname)
+                write(ds, "lbls", lbls)
 
                 write_attribute(ds, "dims", dims)
                 write_attribute(ds, "resolution", resolution)
