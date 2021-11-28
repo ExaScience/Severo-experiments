@@ -121,7 +121,7 @@ p <- ggplot(Y, aes(x=dataset, y=peakmem, group=implementation, fill=implementati
 	geom_hline(aes(yintercept=256), color="red") + annotate("text", x="PBMC (3k)", y=256, label="maximum system memory", color="red", vjust=-1) +
     ylab("Peak memory (GB)") + xlab(NULL)# + g
 q <- ggplot(Y, aes(x=size, y=peakmem, group=implementation, fill=implementation, color=implementation)) +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
+    geom_smooth(method = "lm", formula = y ~ x - 1, se = F) +
     geom_point() +
 	geom_hline(aes(yintercept=256), color="red") + annotate("text", x=100000, y=256, label="maximum system memory", color="red", vjust=-1) +
     scale_color_manual(values=cols) +
