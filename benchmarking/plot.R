@@ -108,7 +108,7 @@ X <- read.csv("comparison_metrics.csv") %>%
         ),
     ) %>% tidyr::drop_na(implementation, dataset)
 
-Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(ari=median(ari), jaccard=median(jaccard), peakmem=median(peakmem)) %>% dplyr::ungroup()
+Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(ari=median(ari, na.rm=T), jaccard=median(jaccard, na.rm=T), peakmem=median(peakmem, na.rm=T)) %>% dplyr::ungroup()
 
 g <- guides(fill = guide_legend(override.aes = list(color = cols,
                                                     shape = c(16, 16, 16),

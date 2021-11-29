@@ -153,7 +153,18 @@ ggplot(Q, aes(x=size,y=speedup, fill=implementation, color=implementation)) +
 
 X1 <- read.csv("ari_nohvf.csv")
 X2 <- read.csv("ari_hvf.csv")
-XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2))
+XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2)) %>% dplyr::filter(implementation %in% c("R", "jl", "py")) %>%
+    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl"), labels=c("seurat", "scanpy", "severo")), size = round_size(size))
+YY <- XX %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(ari=median(ari, na.rm=T), jaccard=median(jaccard, na.rm=T), peakmem=median(peakmem, na.rm=T)) %>% dplyr::ungroup()
+
+q <- ggplot(XX, aes(x=size, y=peakmem, group=implementation, color=implementation)) +
+    geom_smooth(method = "lm", formula = y ~ x - 1, se = F) +
+    geom_point() +
+	geom_hline(aes(yintercept=256), color="red") + annotate("text", x=100000, y=256, label="maximum system memory", color="red", vjust=-1) +
+    scale_color_manual(values=cols) +
+    ylab("Peak memory (GB)") + xlab("Number of cells")
+ggsave(file="memory_usage_scaling.pdf", plot=q, width=20, height=15)
+
 YY <- XX %>% dplyr::group_by(size, implementation) %>% dplyr::summarize(ari_mu=mean(ari), ari_se=sd(ari), ri_mu=mean(ri), ri_se=sd(ri), jaccard_mu=mean(jaccard), jaccard_se=sd((jaccard))) %>% dplyr::ungroup()
 wrap_plots(
     ggplot(YY) + geom_pointrange(aes(x=size, y=ari_mu, ymin=(ari_mu-ari_se), ymax=(ari_mu+ari_se), color=implementation), size=0.5, position = position_dodge(width=.03)) + scale_x_log10(breaks=unique(YY$size)) + ylab("Adjusted Rand Index"),
