@@ -61,11 +61,11 @@ FindAllMarkers(data::RObject; only_pos=true, min_pct=0.25, logfc_threshold=0.25)
 	hvf, idents, umap, de
 end
 
-@time_calls function jl_pipeline(X::NamedCountMatrix, hvf_ref::Vector{String})
+@time_calls function jl_pipeline(X::NamedCountMatrix, hvf_ref::Vector{String}, T::Type=Float64)
 	X = filter_counts(X, min_cells=3, min_features=200)
 	hvf = find_variable_features(X, 2000, method=:vst)
 
-	Y = normalize_cells(X, scale_factor=1e4, method=:lognormalize)
+	Y = normalize_cells(X, scale_factor=1e4, method=:lognormalize, dtype=T)
 
 	S = scale_features(Y[:,hvf_ref], scale_max=10)
 	em = embedding(S, 150, method=:pca, algorithm=:irlba)
@@ -173,6 +173,15 @@ for fname in ARGS
       println("$dataset, $ari, $j, $modularity_R, $modularity_jl")
       write(io, "comparison", [ari, j, modularity_R, modularity_jl])
       write(io, "coordinates", copy(last(x)[6]))
+    end
+    if !haskey(io, "jl32")
+      println("Running jl32")
+      t = @elapsed x = jl_pipeline(X, hvf_R, Float32)
+      if t < 100
+        println("short pipeline, running again")
+        x = jl_pipeline(X, hvf_R, Float32)
+      end
+      post_process(io, "jl32", x)
     end
   end
 end

@@ -10,11 +10,12 @@ end
 function memusage()
     l = ReentrantLock()
     peak_usage = 0
+    done = Threads.Atomic{Bool}(false)
 
-    t = @task begin
-        while true
+    t = Threads.@spawn begin
+        while !done[]
+            lock(l)
             try
-                lock(l)
                 peak_usage = max(peak_usage, get_memusage())
  #                ccall(:printf, Int, (Ptr{UInt8},Int32), "%d\n", peak_usage)
             finally
@@ -24,20 +25,27 @@ function memusage()
             sleep(0.01)
         end
     end
-    schedule(t)
 
-    function query_memusage()
+    function query_memusage(stop::Bool=false)
+        lock(l)
         rv = try
-            lock(l)
             rv = peak_usage
             peak_usage = get_memusage()
+
+            if stop
+              done[] = true
+            end
+
             rv
         finally
             unlock(l)
         end
+
         println("mem $rv")
+        istaskfailed(t) && throw(TaskFailedException(t))
         rv
     end
+    query_memusage
 end
 
 struct RUsage
