@@ -55,7 +55,7 @@ p <- ggplot(Z, aes(x=size,y=mu, fill=implementation, color=implementation)) +
     facet_wrap(~step, scales="free_y", ncol=3)
 ggsave(file="scaling_breakdown.pdf", plot=p, width=20, height=15)
 
-p <- ggplot(Y) + geom_boxplot(aes(x=as.factor(size), fill=implementation, y=clusters)) + xlab("Number of cells") + ylab("Number of clusters found")
+p <- ggplot(X) + geom_boxplot(aes(x=as.factor(size), fill=implementation, y=clusters)) + xlab("Number of cells") + ylab("Number of clusters found")
 ggsave(file="scaling_clusters.pdf", plot=p, width=20, height=15)
 
 ZZ <- Z %>% dplyr::filter(step!="FindAllMarkers") %>% dplyr::group_by(size, implementation) %>% dplyr::mutate(percent=mu/sum(mu)) %>% dplyr::ungroup()
@@ -105,7 +105,7 @@ ggsave(file="scaling_speedup.pdf", plot=p, width=20, height=20)
 S <- X %>% dplyr::group_by(hvf, dataset, it, size, step) %>% dplyr::select(-clusters) %>%
                  tidyr::pivot_wider(names_from=implementation, values_from=time) %>%
                     dplyr::transmute(seurat=seurat/severo, scanpy=scanpy/severo) %>%
-                tidyr::pivot_longer(cols=c(R, py, opt), names_to="implementation", values_to="speedup") %>%
+                tidyr::pivot_longer(cols=c(seurat, scanpy), names_to="implementation", values_to="speedup") %>%
             dplyr::ungroup()
 
 p <- ggplot(S, aes(x=size, y=speedup, fill=implementation, color=implementation)) +
@@ -130,6 +130,7 @@ P <- X %>% dplyr::group_by(hvf, size, it, implementation) %>% dplyr::mutate(tota
     dplyr::transmute(percent_markers=FindAllMarkers/total, percent_umap=RunUMAP/total, total=total, markers=FindAllMarkers, umap=RunUMAP) %>% dplyr::ungroup()
 ggplot(P, aes(x=size, y=percent_umap, fill=implementation)) + geom_boxplot()
 
+if(F) {
 Q <- X %>% dplyr::filter(implementation %in% c("jl", "jl_opt"), step %in% c("RunPCA", "FindAllMarkers"))%>%
     dplyr::mutate(implementation = factor(implementation, levels=c("jl", "jl_opt"), labels=c("original", "improved")), size = round_size(size)) %>%
     dplyr::select(-clusters) %>%
@@ -150,6 +151,7 @@ ggplot(Q, aes(x=size,y=speedup, fill=implementation, color=implementation)) +
     scale_y_continuous(breaks=c(2,3,4,5,6, 7, 8)) +
     theme(legend.position = "none") +
     facet_wrap(~step, scales="free_y", ncol=1)
+}
 
 X1 <- read.csv("ari_nohvf.csv")
 X2 <- read.csv("ari_hvf.csv")
@@ -173,3 +175,26 @@ wrap_plots(
 #ggplot(YY) + geom_pointrange(aes(x=size, y=jaccard_mu, ymin=(jaccard_mu-jaccard_se), ymax=(jaccard_mu+jaccard_se), color=implementation), size=0.5, position = position_dodge(width=.03)) + scale_x_log10(breaks=unique(YY$size))
 
 ggplot(XX) + geom_boxplot() + geom_jitter(color="black", size=0.4, alpha=0.9) + theme_ipsum()
+
+model_comparison <- function(x) {
+	lm1 <- lmList(totaltime ~ size - 1 | implementation, x)
+	lm2 <- lmList(totaltime ~ I(size^2) + size - 1 | implementation, x)
+
+	t <- mapply(lrtest, lm1, lm2, SIMPLIFY=F)
+	z <- mapply(function(t, a, b) {
+			pval <- t$`Pr(>Chisq)`[2]
+			if(pval < 0.01) b else a
+		}, t, lm1, lm2, SIMPLIFY=F)
+	list(best=z, test=t)
+}
+
+predict_lmList <- function(mod, newdata, ...) {
+	newdata <- as.data.frame(newdata)
+	z <- mapply(function(x,i) as.data.frame(predict(x, newdata[newdata$implementation == i,], ...)), mod, names(mod), SIMPLIFY=F)
+	z <- do.call(rbind, unname(z))
+	merge(newdata, z, by="row.names", all.x=T)
+}
+
+extrap <- expand.grid(implementation=levels(Q$implementation), size=c(2000000, 5000000, 10000000))
+extrap <- predict_lmList(o$best, extrap, se.fit=T) %>% dplyr::arrange(size, implementation)
+#p + geom_pointrange(aes(ymin=fit-se.fit, ymax=fit+se.fit, x=size, y=fit), data=extrap)
