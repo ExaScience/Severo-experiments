@@ -7,7 +7,7 @@ library(tidyr)
 library(lmtest)
 library(lme4)
 
-cols <- c("seurat"="#F8766D", "scanpy"="#00BA38", "severo"="#619CFF")
+cols <- c("seurat"="#F8766D", "scanpy"="#00BA38", "severo"="#619CFF", "severo32"="#C77CFF")
 
 round_size <- function(size) {
     sizes <- c(3000, 6000, 12000, 25000, 50000, 75000, 100000, 125000, 250000, 500000, 750000, 1000000)
@@ -16,7 +16,7 @@ round_size <- function(size) {
 }
 
 X <- read.csv("comparison_metrics.csv") %>%
-    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl"), labels=c("seurat", "scanpy", "severo")),
+    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl", "jl32"), labels=c("seurat", "scanpy", "severo", "severo32")),
         dataset = factor(dataset,
                     levels=c("1M_gz", "210129_raw_BALPBMC", "l5_all", "pbmc_68k", "3k"),
                     labels=c("Brain cells (1.3M)", "Covid-19 (500k)", "Mouse Brain Atlas (120k)", "pbmc_68k"="PBMC (68k)", "3k"="PBMC (3k)"),
@@ -27,11 +27,11 @@ Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(a
 
 X1 <- read.csv("ari_nohvf.csv")
 X2 <- read.csv("ari_hvf.csv")
-XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2)) %>% dplyr::filter(implementation %in% c("R", "jl", "py")) %>%
-    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl"), labels=c("seurat", "scanpy", "severo")), size = round_size(size))
+XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2)) %>% dplyr::filter(implementation %in% c("R", "jl", "py", "jl32")) %>%
+    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl", "jl32"), labels=c("seurat", "scanpy", "severo", "severo32")), size = round_size(size))
 YY <- XX %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(ari=median(ari, na.rm=T), jaccard=median(jaccard, na.rm=T), peakmem=median(peakmem, na.rm=T)) %>% dplyr::ungroup()
 
-p <- ggplot(Y, aes(x=dataset, y=peakmem, group=implementation, fill=implementation, color=implementation)) +
+p <- ggplot(Y, aes(x=dataset, y=peakmem, group=implementation, fill=implementation)) +
     geom_col(position="dodge") +
     scale_color_manual(values=cols) +
     geom_hline(aes(yintercept=256), color="red") + annotate("text", x="PBMC (3k)", y=256, label="maximum system memory", color="red", vjust=-1) +
@@ -54,7 +54,8 @@ model_comparison <- function(x) {
 
 predict_lmList <- function(mod, newdata, ...) {
 	newdata <- as.data.frame(newdata)
-	z <- do.call(rbind, mapply(function(x,i) predict(x, newdata[newdata$implementation == i,], ...), mod, names(mod)))
+	z <- mapply(function(x,i) as.data.frame(predict(x, newdata[newdata$implementation == i,], ...)), mod, names(mod), SIMPLIFY=F)
+	z <- do.call(rbind, unname(z))
 	merge(newdata, z, by="row.names", all.x=T)
 }
 
@@ -78,3 +79,6 @@ p_ranges_y <- c(ggplot_build(comb[[1]])$layout$panel_scales_y[[1]]$range$range,
 comb <- comb & ylim(min(p_ranges_y), max(p_ranges_y))
 
 ggsave(file="memory_usage_comb.pdf", plot=comb, width=20, height=15)
+
+extrap <- expand.grid(implementation=levels(Q$implementation), size=c(2000000, 5000000, 10000000))
+extrap <- predict_lmList(o$best, extrap, se.fit=T)
