@@ -28,7 +28,7 @@ Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(a
 X1 <- read.csv("ari_nohvf.csv")
 X2 <- read.csv("ari_hvf.csv")
 XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2)) %>% dplyr::filter(implementation %in% c("R", "jl", "py", "jl32")) %>%
-    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl", "jl32"), labels=c("seurat", "scanpy", "severo", "severo32")), size = round_size(size))
+    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl", "jl32"), labels=c("seurat", "scanpy", "severo", "severo32")))#, size = round_size(size))
 YY <- XX %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(ari=median(ari, na.rm=T), jaccard=median(jaccard, na.rm=T), peakmem=median(peakmem, na.rm=T)) %>% dplyr::ungroup()
 
 p <- ggplot(Y, aes(x=dataset, y=peakmem, group=implementation, fill=implementation)) +
@@ -64,7 +64,7 @@ D <- predict_lmList(o$best, Q, interval = 'confidence')
 
 q <- ggplot(D, aes(x=size, y=peakmem, group=implementation, fill=implementation, color=implementation)) +
     geom_line(aes(x=size, y=fit)) +
-    geom_ribbon(aes(x=size, y=fit, ymin=lwr, ymax=upr), alpha=0.3) +
+	geom_ribbon(aes(x=size, y=fit, ymin=lwr, ymax=upr), alpha=0.3) +
     geom_point() +
     geom_hline(aes(yintercept=256), color="red") + annotate("text", x=100000, y=256, label="maximum system memory", color="red", vjust=-1) +
     scale_color_manual(values=cols) +
@@ -81,4 +81,4 @@ comb <- comb & ylim(min(p_ranges_y), max(p_ranges_y))
 ggsave(file="memory_usage_comb.pdf", plot=comb, width=20, height=15)
 
 extrap <- expand.grid(implementation=levels(Q$implementation), size=c(2000000, 5000000, 10000000))
-extrap <- predict_lmList(o$best, extrap, se.fit=T)
+extrap <- predict_lmList(o$best, extrap, se.fit=T) %>% dplyr::arrange(size, implementation)
