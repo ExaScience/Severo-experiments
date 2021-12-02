@@ -73,7 +73,7 @@ q <- ggplot(D, aes(x=size, y=peakmem, group=implementation, fill=implementation,
 ggsave(file="memory_usage_bars.pdf", plot=p, width=20, height=15)
 ggsave(file="memory_usage_scaling.pdf", plot=q, width=20, height=15)
 
-comb <- (p | q) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A') & theme(legend.position = 'bottom')
+comb <- (p | q + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank() )) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A') & theme(legend.position = 'bottom')
 p_ranges_y <- c(ggplot_build(comb[[1]])$layout$panel_scales_y[[1]]$range$range,
                 ggplot_build(comb[[2]])$layout$panel_scales_y[[1]]$range$range)
 comb <- comb & ylim(min(p_ranges_y), max(p_ranges_y))
